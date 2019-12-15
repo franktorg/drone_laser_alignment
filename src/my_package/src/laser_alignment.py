@@ -37,8 +37,9 @@ class alignment:
         ocam_mod['c'] = float(0.7488)
         ocam_mod['d'] = float(0.962)
         ocam_mod['e'] = float(-0.1257)
-        ocam_mod['cx'] = float(241.6244)
-        ocam_mod['cy'] = float(335.9914)
+        # Experimental center
+        ocam_mod['cx'] = float(233) 
+        ocam_mod['cy'] = float(305)
         self.ocam_model = ocam_mod
         #Intilize cvBridge Object
         self.bridge= CvBridge()
