@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/odroid/catkin_ws/devel/.private/camera_info_manager/setup.sh

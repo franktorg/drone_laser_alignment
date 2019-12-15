@@ -1,0 +1,1 @@
+/home/odroid/catkin_ws/devel/.private/polled_camera/lib/python2.7/dist-packages/polled_camera/srv/_GetPolledImage.py

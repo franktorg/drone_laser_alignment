@@ -1,0 +1,3 @@
+Symlinking /home/odroid/catkin_ws/devel/share/my_package/cmake/my_packageConfig.cmake
+Symlinking /home/odroid/catkin_ws/devel/share/my_package/cmake/my_packageConfig-version.cmake
+Symlinking /home/odroid/catkin_ws/devel/lib/pkgconfig/my_package.pc

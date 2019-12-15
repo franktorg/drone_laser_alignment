@@ -1,0 +1,6 @@
+Symlinking /home/odroid/catkin_ws/devel/./cmake.lock
+Symlinking /home/odroid/catkin_ws/devel/share/usb_cam/cmake/usb_camConfig.cmake
+Symlinking /home/odroid/catkin_ws/devel/share/usb_cam/cmake/usb_camConfig-version.cmake
+Symlinking /home/odroid/catkin_ws/devel/lib/libusb_cam.so
+Symlinking /home/odroid/catkin_ws/devel/lib/pkgconfig/usb_cam.pc
+Symlinking /home/odroid/catkin_ws/devel/lib/usb_cam/usb_cam_node
