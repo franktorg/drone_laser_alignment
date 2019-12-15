@@ -121,7 +121,7 @@ def undistort_point(point2D, ocam_model):
     return vector2D
 
 #===================================================================================
-# Function to map a pixel point 'point2D' onto new pixel point from camera center
+# Own function to map a pixel point 'point2D' onto new pixel point from camera center
 # frame
 # Input: - Pixel point: 2x1 matrix containing the pixel coordinate of the image
 #                       point [x,y]
