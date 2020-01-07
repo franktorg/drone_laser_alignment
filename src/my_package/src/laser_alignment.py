@@ -156,8 +156,14 @@ class alignment:
             
         # One blob detected in the image
         elif keypoints_num == 1:
-            x = keypoints[0].pt[0]
-            y = keypoints[0].pt[1]
+
+            # Odroid keypoints ------------------ Warning -----------------            
+            #x = keypoints[0].pt[0]
+            #y = keypoints[0].pt[1]
+
+            # Gazebo keypoints
+            x = keypoints[0].pt[1]
+            y = keypoints[0].pt[0]
             self.coordinates = [[x, y]]
             print("Blob detected at:[", x, y,"]")
             
@@ -165,8 +171,15 @@ class alignment:
         elif keypoints_num > 1:
             print(keypoints_num, "blobs detected")
             for i in range(keypoints_num):
-                x = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[x]
-                y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
+
+                # Odroid keypoints ------------- Warning -----------------           
+                # x = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[x]
+                # y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
+                
+                # Gazebo keypoints
+                x = keypoints[0].pt[1]
+                y = keypoints[0].pt[0]
+
                 if i == 0:
                     self.coordinates[0][0] = x
                     self.coordinates[0][1] = y
@@ -191,8 +204,11 @@ def main():
     # Create alignment object
     uav = alignment()
     
-    # Subscribe to camera Image topic  
-    rospy.Subscriber("/usb_cam/image_raw",Image , uav.load_image)
+    # Subscribe to camera Image topic (Real time application)  
+    # rospy.Subscriber("/usb_cam/image_raw",Image , uav.load_image)
+
+    # Subscribe to Gazebo camera Image topic (Simulation) -------Warning------------
+    rospy.Subscriber("/iris/usb_cam/image_raw",Image , uav.load_image)
 
     # Publisher of filtered image   
     img_publisher = rospy.Publisher("/blob_detector", Image, queue_size=10)
