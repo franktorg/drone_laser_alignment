@@ -5,7 +5,7 @@ import rospy
 # Joy message structure
 from sensor_msgs.msg import Joy
 # 3D point & Stamped Pose msgs
-from geometry_msgs.msg import Point, PoseStamped, TwistStamped
+from geometry_msgs.msg import Point, Vector3, PoseStamped, TwistStamped
 from gazebo_msgs.msg import *
 # import all mavros messages and services
 from mavros_msgs.msg import *
@@ -89,8 +89,8 @@ class Controller:
         self.state = State()
         # Instantiate a setpoints message
         self.sp = PositionTarget()
-        # set the flag to use velocity setpoints and yaw angle
-        self.sp.type_mask = int('010111000111', 2) # int('010111111000', 2)
+        # set the flag to use velocity and position setpoints, and yaw angle
+        self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
         # LOCAL_NED
         self.sp.coordinate_frame = 1
 
@@ -111,17 +111,20 @@ class Controller:
         # Step size for position update
         self.STEP_SIZE = 2.0
 
-        # Fence. We will assume a square fence for now
-        self.FENCE_LIMIT = 5.0
+        # Fence. We will assume a rectangular fence [Cage flight area]
+        self.FENCE_LIMIT_X = 4.0
+        self.FENCE_LIMIT_Y = 3.0
+        self.FENCE_LIMIT_Z_DOWN = 0.25
+        self.FENCE_LIMIT_Z_UP = self.ALT_SP
 
         # A Message for the current local position of the drone(Anchor)
         self.local_pos = Point(0.0, 0.0, 0.0)
-        self.local_vel = Point(0.0, 0.0, 0.0)
+        self.local_vel = Vector3(0.0, 0.0, 0.0)
 
         self.modes = fcuModes()
 
-		self.subGazStates = rospy.Subscriber('/gazebo/model_states', ModelStates, self.cbGazStates, queue_size=1)
-		rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb)
+        #self.subGazStates = rospy.Subscriber('/gazebo/model_states', ModelStates, self.cbGazStates, queue_size = 1)
+        #self.subStates = rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb, queue_size = 1)
 
         # Position controllers
         self.current_time = time.time()
@@ -137,11 +140,11 @@ class Controller:
 
         self.u_x = 0.0
         self.ITerm_x = 0.0
-        self.SetPoint_x  = 0
+        self.SetPoint_x  = 1
 
         self.u_y = 0.0
         self.ITerm_y = 0.0
-        self.SetPoint_y  = 0
+        self.SetPoint_y  = 1
 
 
     # Callbacks
@@ -187,7 +190,7 @@ class Controller:
 
         self.u_x = PTerm_x + (Ki_x * self.ITerm_x)
 
-    def PID_y(self,current_y):
+    def PID_y(self, current_y):
         Kp_y = 1.5
         Ki_y = 0.01
         
@@ -212,6 +215,15 @@ class Controller:
         self.local_pos.x = msg.pose.position.x
         self.local_pos.y = msg.pose.position.y
         self.local_pos.z = msg.pose.position.z
+        quater = (msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quater)
+        self.current_yaw = euler[2]
+
+    ## local velocity callback
+    def velCb(self, msg):
+        self.local_vel.x = msg.twist.linear.x
+        self.local_vel.y = msg.twist.linear.y
+        self.local_vel.z = msg.twist.linear.z
 
      ## joystick callback
     def joyCb(self, msg):
@@ -237,42 +249,46 @@ class Controller:
         x = -1.0*self.joy_msg.axes[1]
         y = -1.0*self.joy_msg.axes[0]
         z = self.joy_msg.axes[2]
-
+        print("Joystick z = ",z)
    
-
-        distance_x = abs(self.local_pos.x-self.leader_pos.x)
-        distance_y = abs(self.local_pos.y-self.leader_pos.y)
+        #distance_x = abs(self.local_pos.x-self.leader_pos.x)
+        #distance_y = abs(self.local_pos.y-self.leader_pos.y)
+        distance_x = self.local_pos.x
+        distance_y = self.local_pos.y
 
 
  
 
         if (z > 0) :
+            print("flying mode")
             self.SetPoint_z  = self.ALT_SP
             self.PID_z(self.local_pos.z)
             self.sp.velocity.z = self.u_z
-            self.SetPoint_x  = 0
-            self.SetPoint_y  = 0
+            self.SetPoint_x  = 1
+            self.SetPoint_y  = 1
             self.PID_x(distance_x)
             self.PID_y(distance_y)
-            self.u_x= -np.sign(self.local_pos.x-self.leader_pos.x)*self.u_x
-            self.u_y= -np.sign(self.local_pos.y-self.leader_pos.y)*self.u_y
+            self.u_x= -np.sign(self.local_pos.x)*self.u_x
+            self.u_y= -np.sign(self.local_pos.y)*self.u_y
             self.sp.velocity.x = self.u_x
             self.sp.velocity.y = self.u_y
             print "ex : ",self.SetPoint_x-distance_x," u_x : ",self.u_x
             print "ey : ",self.SetPoint_y-distance_y," u_y : ",self.u_y
             print "ez : ",self.ALT_SP-self.local_pos.z," u_z : ",self.u_z
         
-        elif (z>0) and abs(self.leader_pos.z- self.ALT_SP)<0.01:
+        elif (z>0) and abs(self.local_pos.z - self.ALT_SP)<0.01:
+            print("Static altitude mode")
             self.sp.velocity.z = 0 
 
         #landing
-        if (z<0):
+        if z < 0 or z == 0:
+            print("Landing mode")
             self.SetPoint_z  = 0
-            self.PID_z(self.leader_pos.z)
+            self.PID_z(self.local_pos.z)
             self.sp.velocity.z = self.u_z
-            print "ez : ",self.ALT_SP-self.leader_pos.z," u_z : ",self.u_z
-        elif (z<0) and abs(self.leader_pos.z - 0)<0.01:
-            self.sp.velocity.z = 0
+            print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
+        # elif (z<0) and abs(self.local_pos.z - 0)<0.01:
+        #     self.sp.velocity.z = 0
 
 # Main function
 def main():
@@ -290,20 +306,19 @@ def main():
     # Subscribe to drone state
     rospy.Subscriber('mavros/state', State, cnt.stateCb)
 
-    # subscribe to joystick topic
+    # Subscribe to drone's local position
+    rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb)
+
+    # Subscribe to drone's local velocity
+    rospy.Subscriber('mavros/local_position/velocity_local', PoseStamped, cnt.velCb)
+
+    # Subscribe to joystick topic
     rospy.Subscriber('joy', Joy, cnt.joyCb)
 
-  
     # Setpoint publisher
     sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size=1)
-
-    pos_anchor_pub = rospy.Publisher('position_Anchor_gt',Point,queue_size=1) 
-    pos_tag_pub = rospy.Publisher('position_Tag_gt',Point,queue_size=1) 
-
-    vel_anchor_pub = rospy.Publisher('velocity_Anchor_gt',Point,queue_size=1)
-    vel_tag_pub = rospy.Publisher('velocity_Tag_gt',Point,queue_size=1)
-   
-   
+    
+    print("Subscribers and Publishers defined")
 
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
     k=0
@@ -314,15 +329,12 @@ def main():
 
     # activate OFFBOARD mode
     cnt.modes.setOffboardMode()
-
+    print("OFFBOARD mode active")
     # ROS main loop
     while not rospy.is_shutdown():
         cnt.updateSp()
         sp_pub.publish(cnt.sp)
-        pos_anchor_pub.publish(cnt.local_pos)
-        vel_anchor_pub.publish(cnt.local_vel)
-        pos_tag_pub.publish(cnt.leader_pos)
-        vel_tag_pub.publish(cnt.leader_vel)
+        
         #dist_anchor_tag_pub.publish(cnt.distance_anchor_tag)
         #vel_sp_pub.publish(cnt.vel_sp)
         rate.sleep()
