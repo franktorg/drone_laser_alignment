@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/devel/.private/polled_camera
-
-Name: polled_camera
-Description: Description of polled_camera
-Version: 1.11.13
-Cflags: -I/home/odroid/catkin_ws/devel/.private/polled_camera/include -I/home/odroid/catkin_ws/src/image_common/polled_camera/include
-Libs: -L/home/odroid/catkin_ws/devel/.private/polled_camera/lib -lpolled_camera
-Requires: image_transport message_runtime roscpp sensor_msgs std_msgs

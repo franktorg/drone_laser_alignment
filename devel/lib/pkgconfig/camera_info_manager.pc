@@ -1,1 +1,0 @@
-/home/odroid/catkin_ws/devel/.private/camera_info_manager/lib/pkgconfig/camera_info_manager.pc

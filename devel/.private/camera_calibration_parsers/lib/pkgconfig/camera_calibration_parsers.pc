@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/devel/.private/camera_calibration_parsers
-
-Name: camera_calibration_parsers
-Description: Description of camera_calibration_parsers
-Version: 1.11.13
-Cflags: -I/home/odroid/catkin_ws/src/image_common/camera_calibration_parsers/include
-Libs: -L/home/odroid/catkin_ws/devel/.private/camera_calibration_parsers/lib -lcamera_calibration_parsers
-Requires: sensor_msgs

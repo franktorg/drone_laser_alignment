@@ -1,5 +1,0 @@
-Symlinking /home/odroid/catkin_ws/devel/share/camera_info_manager/cmake/camera_info_managerConfig-version.cmake
-Symlinking /home/odroid/catkin_ws/devel/share/camera_info_manager/cmake/camera_info_managerConfig.cmake
-Symlinking /home/odroid/catkin_ws/devel/lib/libcamera_info_manager.so
-Symlinking /home/odroid/catkin_ws/devel/lib/pkgconfig/camera_info_manager.pc
-Symlinking /home/odroid/catkin_ws/devel/lib/camera_info_manager/unit_test
