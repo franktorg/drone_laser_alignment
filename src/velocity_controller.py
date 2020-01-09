@@ -90,7 +90,7 @@ class Controller:
         # Instantiate a setpoints message
         self.sp = PositionTarget()
         # set the flag to use velocity and position setpoints, and yaw angle
-        self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
+        self.sp.type_mask = int('010111000111', 2) # int('010111111000', 2)
         # LOCAL_NED
         self.sp.coordinate_frame = 1
 
@@ -146,11 +146,14 @@ class Controller:
         self.ITerm_y = 0.0
         self.SetPoint_y  = 1
 
+        # Controller values
+        self.kp_val = 0.5
+        self.ki_val = 0.01
 
     # Callbacks
     def PID_z(self, current_z):
-        Kp_z = 1.5
-        Ki_z = 0.01
+        Kp_z = self.kp_val
+        Ki_z = self.ki_val
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_z
@@ -171,8 +174,8 @@ class Controller:
         
 
     def PID_x(self, current_x):
-        Kp_x = 1.5
-        Ki_x = 0.01
+        Kp_x = self.kp_val
+        Ki_x = self.ki_val
 
 
         self.current_time = time.time()
@@ -191,8 +194,8 @@ class Controller:
         self.u_x = PTerm_x + (Ki_x * self.ITerm_x)
 
     def PID_y(self, current_y):
-        Kp_y = 1.5
-        Ki_y = 0.01
+        Kp_y = self.kp_val
+        Ki_y = self.ki_val
         
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
@@ -248,8 +251,8 @@ class Controller:
     def updateSp(self):
         x = -1.0*self.joy_msg.axes[1]
         y = -1.0*self.joy_msg.axes[0]
-        z = self.joy_msg.axes[2]
-        print("Joystick z = ",z)
+        z = self.local_pos.z
+        
    
         #distance_x = abs(self.local_pos.x-self.leader_pos.x)
         #distance_y = abs(self.local_pos.y-self.leader_pos.y)
@@ -268,8 +271,8 @@ class Controller:
             self.SetPoint_y  = 1
             self.PID_x(distance_x)
             self.PID_y(distance_y)
-            self.u_x= -np.sign(self.local_pos.x)*self.u_x
-            self.u_y= -np.sign(self.local_pos.y)*self.u_y
+            self.u_x= np.sign(self.SetPoint_x - self.local_pos.x)*self.u_x
+            self.u_y= np.sign(self.SetPoint_y - self.local_pos.y)*self.u_y
             self.sp.velocity.x = self.u_x
             self.sp.velocity.y = self.u_y
             print "ex : ",self.SetPoint_x-distance_x," u_x : ",self.u_x
@@ -282,8 +285,8 @@ class Controller:
 
         #landing
         if z < 0 or z == 0:
-            print("Landing mode")
-            self.SetPoint_z  = 0
+            #print("Landing mode")
+            self.SetPoint_z  = 1
             self.PID_z(self.local_pos.z)
             self.sp.velocity.z = self.u_z
             print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
@@ -310,7 +313,7 @@ def main():
     rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb)
 
     # Subscribe to drone's local velocity
-    rospy.Subscriber('mavros/local_position/velocity_local', PoseStamped, cnt.velCb)
+    rospy.Subscriber('mavros/local_position/velocity_local', TwistStamped, cnt.velCb)
 
     # Subscribe to joystick topic
     rospy.Subscriber('joy', Joy, cnt.joyCb)
@@ -318,8 +321,6 @@ def main():
     # Setpoint publisher
     sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size=1)
     
-    print("Subscribers and Publishers defined")
-
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
     k=0
     while k<10:
