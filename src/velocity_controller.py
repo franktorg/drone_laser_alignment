@@ -2,6 +2,8 @@
 
 # ROS python API
 import rospy
+# Laser pixel coordinates message structure
+from drone_laser_alignment.msg import Pixel_coordinates
 # Joy message structure
 from sensor_msgs.msg import Joy
 # 3D point & Stamped Pose msgs
@@ -11,7 +13,6 @@ from gazebo_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
 import numpy as np
-
 import tf
 from tf.transformations import quaternion_from_euler
 
@@ -87,13 +88,16 @@ class Controller:
     def __init__(self):
         # Drone state
         self.state = State()
+        # Instantiate laser pixel coordinates
+        self.coordinates = Pixel_coordinates()
         # Instantiate a setpoints message
         self.sp = PositionTarget()
         # set the flag to use velocity and position setpoints, and yaw angle
-        self.sp.type_mask = int('010111000111', 2) # int('010111111000', 2)
+        self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
         # LOCAL_NED
         self.sp.coordinate_frame = 1
-
+        # Joystick button
+        self.alignment_flag = 0
         # Instantiate a velocity setpoint message
         #self.vel_sp = TwistStamped()
 
@@ -112,19 +116,21 @@ class Controller:
         self.STEP_SIZE = 2.0
 
         # Fence. We will assume a rectangular fence [Cage flight area]
-        self.FENCE_LIMIT_X = 4.0
-        self.FENCE_LIMIT_Y = 3.0
-        self.FENCE_LIMIT_Z_DOWN = 0.25
-        self.FENCE_LIMIT_Z_UP = self.ALT_SP
-
+        self.FENCE_LIMIT_X = 1.5
+        self.FENCE_LIMIT_Y = 2
+        
         # A Message for the current local position of the drone(Anchor)
         self.local_pos = Point(0.0, 0.0, 0.0)
         self.local_vel = Vector3(0.0, 0.0, 0.0)
 
         self.modes = fcuModes()
 
-        #self.subGazStates = rospy.Subscriber('/gazebo/model_states', ModelStates, self.cbGazStates, queue_size = 1)
-        #self.subStates = rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb, queue_size = 1)
+        # States 
+        self.TAKEOFF   = 0
+        self.FLIGHT    = 0
+        self.ALIGNMENT = 0
+        self.PRE_LAND  = 0
+        self.LAND      = 0
 
         # Position controllers
         self.current_time = time.time()
@@ -140,20 +146,43 @@ class Controller:
 
         self.u_x = 0.0
         self.ITerm_x = 0.0
-        self.SetPoint_x  = 1
+        self.SetPoint_x  = -1
 
         self.u_y = 0.0
         self.ITerm_y = 0.0
-        self.SetPoint_y  = 1
+        self.SetPoint_y  = 1.5
 
         # Controller values
-        self.kp_val = 0.5
-        self.ki_val = 0.01
+        self.kp_val = 0.0025 #prev 0.0025
+        self.ki_val = 0.0005 #prev 0.0005
+
+    # Reset Controller States
+    def resetStates(self):
+        # States
+        self.TAKEOFF   = 0
+        self.FLIGHT    = 0
+        self.ALIGNMENT = 0
+        self.PRE_LAND  = 0
+        self.LAND      = 0
+        #Flags
+        self.alignment_flag = 0
+        self.preland_flag = 0
+
+
+    # Keep drone inside the cage area limits
+    def bound(self, v, low, up):
+            r = v
+            if v > up:
+                r = up
+            if v < low:
+                r = low
+
+            return r
 
     # Callbacks
     def PID_z(self, current_z):
-        Kp_z = self.kp_val
-        Ki_z = self.ki_val
+        Kp_z = 1.5
+        Ki_z = 0.01
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_z
@@ -182,7 +211,7 @@ class Controller:
         delta_time = self.current_time - self.last_time_x
         self.last_time_x = self.current_time
 
-        error_x = self.SetPoint_x - current_x
+        error_x = abs(self.SetPoint_x - current_x)
         PTerm_x =  Kp_x * error_x
         self.ITerm_x += error_x * delta_time
 
@@ -201,7 +230,7 @@ class Controller:
         delta_time = self.current_time - self.last_time_y
         self.last_time_y = self.current_time
 
-        error_y = self.SetPoint_y - current_y
+        error_y = abs(self.SetPoint_y - current_y)
         PTerm_y =  Kp_y * error_y
         self.ITerm_y += error_y * delta_time
 
@@ -218,7 +247,8 @@ class Controller:
         self.local_pos.x = msg.pose.position.x
         self.local_pos.y = msg.pose.position.y
         self.local_pos.z = msg.pose.position.z
-        quater = (msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w)
+        quater = (msg.pose.orientation.x, msg.pose.orientation.y,\
+                  msg.pose.orientation.z, msg.pose.orientation.w)
         euler = tf.transformations.euler_from_quaternion(quater)
         self.current_yaw = euler[2]
 
@@ -228,11 +258,17 @@ class Controller:
         self.local_vel.y = msg.twist.linear.y
         self.local_vel.z = msg.twist.linear.z
 
+    ## Pixel coordinates callback
+    def pxl_coordCb(self, msg):
+        self.coordinates.xp = msg.xp
+        self.coordinates.yp = msg.yp
+        self.coordinates.blob = msg.blob
+
      ## joystick callback
     def joyCb(self, msg):
         self.joy_msg = msg
         if msg.buttons[0] > 0 :
-          self.modes.setArm()
+            self.modes.setArm()
 
         if msg.buttons[1] > 0 :
             self.modes.setAutoLandMode()
@@ -241,7 +277,13 @@ class Controller:
             self.modes.setOffboardMode()  
        
         if msg.buttons[10] > 0 :
-           self.modes.setDisarm()
+            self.modes.setDisarm()
+
+        if msg.buttons[4] > 0 :
+            self.alignment_flag = 1
+
+        if msg.buttons[3] > 0 :
+            self.alignment_flag = 0
 
     ## Drone State callback
     def stateCb(self, msg):
@@ -249,55 +291,87 @@ class Controller:
 
     ## Update setpoint message
     def updateSp(self):
+
         x = -1.0*self.joy_msg.axes[1]
         y = -1.0*self.joy_msg.axes[0]
-        z = self.local_pos.z
-        
-   
-        #distance_x = abs(self.local_pos.x-self.leader_pos.x)
-        #distance_y = abs(self.local_pos.y-self.leader_pos.y)
-        distance_x = self.local_pos.x
-        distance_y = self.local_pos.y
 
 
- 
+        # Switch to velocity setpoints (Laser coordinates)       
+        if self.alignment_flag and self.coordinates.blob:
 
-        if (z > 0) :
-            print("flying mode")
+            # Set the flag to use velocity setpoints and yaw angle
+            self.sp.type_mask = int('010111000111', 2)
+
+            # Altitude controller based on local position
             self.SetPoint_z  = self.ALT_SP
             self.PID_z(self.local_pos.z)
-            self.sp.velocity.z = self.u_z
-            self.SetPoint_x  = 1
-            self.SetPoint_y  = 1
-            self.PID_x(distance_x)
-            self.PID_y(distance_y)
-            self.u_x= np.sign(self.SetPoint_x - self.local_pos.x)*self.u_x
-            self.u_y= np.sign(self.SetPoint_y - self.local_pos.y)*self.u_y
-            self.sp.velocity.x = self.u_x
-            self.sp.velocity.y = self.u_y
-            print "ex : ",self.SetPoint_x-distance_x," u_x : ",self.u_x
-            print "ey : ",self.SetPoint_y-distance_y," u_y : ",self.u_y
-            print "ez : ",self.ALT_SP-self.local_pos.z," u_z : ",self.u_z
-        
-        elif (z>0) and abs(self.local_pos.z - self.ALT_SP)<0.01:
-            print("Static altitude mode")
-            self.sp.velocity.z = 0 
+            ez = abs(self.ALT_SP - self.local_pos.z)
+            if ez < 0.01 :
+                 self.sp.velocity.z = 0
+            elif ez > 0.01 :
+                 self.sp.velocity.z = self.u_z 
+            
+            # x and y controller based on distance from blob center to image center (0,0)
+            self.SetPoint_x  = 0
+            self.SetPoint_y  = 0
+            self.PID_x(self.coordinates.xp)
+            self.PID_y(self.coordinates.yp)
+            self.u_x= -np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
+            self.u_y= -np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
+            
+            ex = abs(self.SetPoint_x - self.coordinates.xp)
+            ey = abs(self.SetPoint_x - self.coordinates.yp)
+            
+            if ex < 5:
+                self.sp.velocity.x = 0
+            elif ex > 5:
+                self.sp.velocity.x = self.u_x
 
-        #landing
-        if z < 0 or z == 0:
-            #print("Landing mode")
-            self.SetPoint_z  = 1
-            self.PID_z(self.local_pos.z)
-            self.sp.velocity.z = self.u_z
-            print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
-        # elif (z<0) and abs(self.local_pos.z - 0)<0.01:
-        #     self.sp.velocity.z = 0
+            if ey < 5:
+                self.sp.velocity.y = 0    
+            elif ey > 5:
+                self.sp.velocity.y = self.u_y
+            
+
+            print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
+            print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
+            print "ez : ",self.ALT_SP - self.local_pos.z," u_z : ",self.u_z
+        
+            
+                
+
+            #landing
+            # if z < 0 or z == 0:
+            #     #print("Landing mode")
+            #     self.SetPoint_z  = 1
+            #     self.PID_z(self.local_pos.z)
+            #     self.sp.velocity.z = self.u_z
+            #     print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
+            # elif (z<0) and abs(self.local_pos.z - 0)<0.01:
+            #     self.sp.velocity.z = 0
+
+        # Switch to position setpoints (Joystick)    
+        else:
+            # set the flag to use position setpoints and yaw angle
+            self.sp.type_mask = int('010111111000', 2)
+            # Update 
+            xsp = self.local_pos.x + self.STEP_SIZE*x
+            ysp = self.local_pos.y + self.STEP_SIZE*y
+
+
+            # limit
+            self.sp.position.x = self.bound(xsp, -1.0*self.FENCE_LIMIT_X, self.FENCE_LIMIT_X)
+            self.sp.position.y = self.bound(ysp, -1.0*self.FENCE_LIMIT_Y, self.FENCE_LIMIT_Y)
+            
+         
+
+        
 
 # Main function
 def main():
 
     # initiate node
-    rospy.init_node('setpoint_node', anonymous=True)
+    rospy.init_node('setpoint_node', anonymous = True)
 
 
     # controller object
@@ -315,19 +389,25 @@ def main():
     # Subscribe to drone's local velocity
     rospy.Subscriber('mavros/local_position/velocity_local', TwistStamped, cnt.velCb)
 
+    # Subscribe to laser pixel coordinates
+    rospy.Subscriber('laser_alignment/coordinates', Pixel_coordinates, cnt.pxl_coordCb)
+
     # Subscribe to joystick topic
     rospy.Subscriber('joy', Joy, cnt.joyCb)
 
     # Setpoint publisher
-    sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size=1)
+    sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size = 1)
+
+    joy_pub = rospy.Publisher('/joy', Joy, queue_size=1)
     
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
-    k=0
-    while k<10:
+    k = 0
+    while k < 10:
         sp_pub.publish(cnt.sp)
         rate.sleep()
-        k = k+1
+        k = k + 1
 
+    # start with 
     # activate OFFBOARD mode
     cnt.modes.setOffboardMode()
     print("OFFBOARD mode active")

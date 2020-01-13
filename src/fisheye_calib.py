@@ -130,8 +130,7 @@ def undistort_point(point2D, ocam_model):
 #=================================================================================== 
 
 def new_pixel_position(point2D, ocam_model):
-    vector2D = []
-    
+    vector2D = []    
     xp = point2D[0] - ocam_model['cx']
     yp = point2D[1] - ocam_model['cy']
 

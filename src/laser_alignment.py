@@ -9,6 +9,7 @@ import roslaunch
 import math
 from tf.transformations import quaternion_from_euler
 from math import *
+from drone_laser_alignment.msg import Pixel_coordinates
 from sensor_msgs.msg import NavSatFix, Image, LaserScan
 from geometry_msgs.msg import Point, PoseStamped, Quaternion, PoseWithCovarianceStamped
 from std_msgs.msg import *
@@ -31,18 +32,25 @@ class alignment:
         self.cv_image = np.zeros((self.image_height, self.image_width, 3), np.uint8)
         self.black_and_white_image = np.zeros((self.image_height, self.image_width)\
                                               , np.uint8)
-        self.coordinates = [[0,0]]
+        # Coordinate variable
+        self.coordinates = Pixel_coordinates()
+        self.coordinates.xp = 0
+        self.coordinates.yp = 0
+        self.coordinates.blob = 0
+
         # Camera calibration data
         ocam_mod = {}
         ocam_mod['c'] = float(0.7488)
         ocam_mod['d'] = float(0.962)
         ocam_mod['e'] = float(-0.1257)
+        
         # Experimental center
         ocam_mod['cx'] = float(233) 
         ocam_mod['cy'] = float(305)
         self.ocam_model = ocam_mod
+
         #Intilize cvBridge Object
-        self.bridge= CvBridge()
+        self.bridge = CvBridge()
 
     #===================================================================================
     # Function to load image from ROS msg
@@ -148,10 +156,12 @@ class alignment:
     #===================================================================================
 
     def get_blob_coordinates(self, keypoints_num, keypoints):
-        
+        vector2D = []
         # No blobs detected in the image
         if keypoints_num < 1:
-            self.coordinates = [[0,0]]
+            self.coordinates.xp = 0
+            self.coordinates.yp = 0
+            self.coordinates.blob = 0 
             print("No blobs detected")
             
         # One blob detected in the image
@@ -164,12 +174,20 @@ class alignment:
             # Gazebo keypoints
             x = keypoints[0].pt[1]
             y = keypoints[0].pt[0]
-            self.coordinates = [[x, y]]
-            print("Blob detected at:[", x, y,"]")
+
+            vector2D = new_pixel_position([x, y], self.ocam_model)
+
+            self.coordinates.xp = vector2D[0]
+            self.coordinates.yp = vector2D[1]
+            self.coordinates.blob = 1
+
+            print("Blob detected at:[", self.coordinates.xp, self.coordinates.yp,"]")
             
         # More than one blob detected in the image
         elif keypoints_num > 1:
             print(keypoints_num, "blobs detected")
+            vector2D = [-800, -900]
+            dist1 = (vector2D[0]**2 + vector2D[1]**2)**0.5
             for i in range(keypoints_num):
 
                 # Odroid keypoints ------------- Warning -----------------           
@@ -177,17 +195,25 @@ class alignment:
                 # y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
                 
                 # Gazebo keypoints
-                x = keypoints[0].pt[1]
-                y = keypoints[0].pt[0]
+                x = keypoints[i].pt[1]
+                y = keypoints[i].pt[0]
 
-                if i == 0:
-                    self.coordinates[0][0] = x
-                    self.coordinates[0][1] = y
-                else:
-                    self.coordinates.append([x, y])
-                print("Blob number", i + 1 ,"detected at: [", x,y,"]")
+                tmp_vector = new_pixel_position([x, y], self.ocam_model)
+                dist2 = (tmp_vector[0]**2 + tmp_vector[1]**2)**0.5
 
-       # print("")
+                if bool(dist2 < dist1):
+                    vector2D = tmp_vector
+                    dist1 = dist2
+                               
+
+                #print("Blob number", i + 1 ,"detected at: [", x, y,"]")
+
+            self.coordinates.xp = vector2D[0]
+            self.coordinates.yp = vector2D[1]
+            self.coordinates.blob = 1
+
+            print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
+       
 
 # End alignment class
 
@@ -205,13 +231,17 @@ def main():
     uav = alignment()
     
     # Subscribe to camera Image topic (Real time application)  
-    # rospy.Subscriber("/usb_cam/image_raw",Image , uav.load_image)
+    # rospy.Subscriber("/usb_cam/image_raw", Image , uav.load_image)
 
     # Subscribe to Gazebo camera Image topic (Simulation) -------Warning------------
     rospy.Subscriber("/iris/usb_cam/image_raw",Image , uav.load_image)
 
     # Publisher of filtered image   
-    img_publisher = rospy.Publisher("/blob_detector", Image, queue_size=10)
+    img_pub = rospy.Publisher("/laser_alignment/blob_detector/image_raw", \
+                                    Image, queue_size = 1)
+
+    pxl_pnt_pub = rospy.Publisher("/laser_alignment/coordinates", Pixel_coordinates,\
+                                  queue_size = 10)
 
     # Keep ros node running
     while not rospy.is_shutdown():
@@ -219,19 +249,21 @@ def main():
         # Filter usb_cam image
         filtered_img = uav.filter_image()
         # Detect blobs
-        keypoints_num, keypoints, pub_img = uav.param_blob_detector(filtered_img)
+        keypoints_num, keypoints, blob_img = uav.param_blob_detector(filtered_img)
         # Get blobs coordinates
         uav.get_blob_coordinates(keypoints_num, keypoints)
 
         # Publish blobs in image    
-        img_publisher.publish(uav.bridge.cv2_to_imgmsg(pub_img,"bgr8"))
+        img_pub.publish(uav.bridge.cv2_to_imgmsg(blob_img,"bgr8"))
 
         # New pixel coordinate
-        for i in range(len(uav.coordinates)):
-            vector_2D = new_pixel_position(uav.coordinates[i], uav.ocam_model)
-            print('Vector: x =', vector_2D[0], ' y =', vector_2D[1])
-            print("")
+        # for i in range(len(uav.coordinates)):
+        #     vector_2D = new_pixel_position(uav.coordinates[i], uav.ocam_model)
+        #     print('Vector: x =', vector_2D[0], ' y =', vector_2D[1])
+        #     print("")
             
+        # Publish pixel coordinates
+        pxl_pnt_pub.publish(uav.coordinates)    
 
         #for x in range(O.imagewidth-1):
         # for y in range(O.imageheight-1):
@@ -242,7 +274,8 @@ def main():
         #print(counter)
         #counter=0
 
-        uav.coordinates = [[0,0]]
+        uav.coordinates.xp = 0 
+        uav.coordinates.yp = 0
         #servo_pub = rospy.Publisher("/servo", UInt16, queue_size=10)
 
 
