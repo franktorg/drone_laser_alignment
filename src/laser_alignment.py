@@ -181,7 +181,7 @@ class alignment:
             self.coordinates.yp = vector2D[1]
             self.coordinates.blob = 1
 
-            print("Blob detected at:[", self.coordinates.xp, self.coordinates.yp,"]")
+            # print("Blob detected at:[", self.coordinates.xp, self.coordinates.yp,"]")
             
         # More than one blob detected in the image
         elif keypoints_num > 1:
@@ -212,7 +212,7 @@ class alignment:
             self.coordinates.yp = vector2D[1]
             self.coordinates.blob = 1
 
-            print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
+            # print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
        
 
 # End alignment class

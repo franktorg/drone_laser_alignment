@@ -146,15 +146,16 @@ class Controller:
 
         self.u_x = 0.0
         self.ITerm_x = 0.0
-        self.SetPoint_x  = -1
+        self.SetPoint_x  = 0
 
         self.u_y = 0.0
         self.ITerm_y = 0.0
-        self.SetPoint_y  = 1.5
+        self.SetPoint_y  = 0
 
         # Controller values
-        self.kp_val = 0.0025 #prev 0.0025
-        self.ki_val = 0.0005 #prev 0.0005
+        self.kp_val = 0.003 
+        self.ki_val = 0.0004 
+        self.pxl_err = 4
 
     # Reset Controller States
     def resetStates(self):
@@ -223,7 +224,8 @@ class Controller:
         self.u_x = PTerm_x + (Ki_x * self.ITerm_x)
 
     def PID_y(self, current_y):
-        Kp_y = self.kp_val
+
+        Kp_y = self.kp_val 
         Ki_y = self.ki_val
         
         self.current_time = time.time()
@@ -322,20 +324,21 @@ class Controller:
             ex = abs(self.SetPoint_x - self.coordinates.xp)
             ey = abs(self.SetPoint_x - self.coordinates.yp)
             
-            if ex < 5:
+            
+            if ex < self.pxl_err:
                 self.sp.velocity.x = 0
-            elif ex > 5:
+            elif ex > self.pxl_err:
                 self.sp.velocity.x = self.u_x
 
-            if ey < 5:
+            if ey < self.pxl_err:
                 self.sp.velocity.y = 0    
-            elif ey > 5:
+            elif ey > self.pxl_err:
                 self.sp.velocity.y = self.u_y
             
 
-            print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
-            print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
-            print "ez : ",self.ALT_SP - self.local_pos.z," u_z : ",self.u_z
+            #print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
+            #print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
+            #print "ez : ",self.ALT_SP - self.local_pos.z," u_z : ",self.u_z
         
             
                 
