@@ -2,16 +2,21 @@
 
     <!-- serial port that connects ODROID to the flight controller -->
     <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+
     <!-- PC IP number to receive data to QGroundControl -->
     <arg name="gcs_url" default="udp://@192.168.0.105:14550" />
     <arg name="tgt_system" default="1" />
     <arg name="tgt_component" default="1" />
     <arg name="log_output" default="screen" />
+
     <!-- Get tracking data from the Mocap machine (IP address: 192.168.0.101)-->
     <arg name="mocap_server" default="192.168.0.101" />
+    <include file="$(find vrpn_client_ros)/launch/sample.launch" >
+        <arg name="server" default="$(arg mocap_server)" />
+    </include>
 
-    <arg name="frame_name" default="uav_frank" />
-
+    <!-- Launch script for PX4 based FCU's -->
+    <!-- base node launch file (MAVROS)-->
     <include file="$(find mavros)/launch/node.launch">
         <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
         <arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -22,10 +27,18 @@
         <arg name="log_output" value="$(arg log_output)" />
     </include>
 
-    <include file="$(find vrpn_client_ros)/launch/sample.launch" >
-        <arg name="server" default="$(arg mocap_server)" />
-    </include>
-
+    <!-- Launch script for relaying pose data published on /mavros/vision_pose/pose to PX4 -->
+    <arg name="frame_name" default="uav_frank" />
     <node pkg="topic_tools" type="relay" name="mocap_topic_relay" args="/vrpn_client_node/$(arg frame_name)/pose /mavros/vision_pose/pose" />
+
+    <!-- run simple_topic_publisher.py from my_package w=640 h=480 -->
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+        <param name="video_device" value="/dev/video0" />
+        <param name="image_width" value="640" /> 
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="usb_cam" />
+        <param name="io_method" value="mmap"/>
+    </node>
     
 </launch>

@@ -125,13 +125,6 @@ class Controller:
 
         self.modes = fcuModes()
 
-        # States 
-        self.TAKEOFF   = 0
-        self.FLIGHT    = 0
-        self.ALIGNMENT = 0
-        self.PRE_LAND  = 0
-        self.LAND      = 0
-
         # Position controllers
         self.current_time = time.time()
         self.last_time_z = self.current_time
@@ -156,19 +149,6 @@ class Controller:
         self.kp_val = 0.003 
         self.ki_val = 0.0004 
         self.pxl_err = 4
-
-    # Reset Controller States
-    def resetStates(self):
-        # States
-        self.TAKEOFF   = 0
-        self.FLIGHT    = 0
-        self.ALIGNMENT = 0
-        self.PRE_LAND  = 0
-        self.LAND      = 0
-        #Flags
-        self.alignment_flag = 0
-        self.preland_flag = 0
-
 
     # Keep drone inside the cage area limits
     def bound(self, v, low, up):

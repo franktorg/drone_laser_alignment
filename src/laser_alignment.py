@@ -167,13 +167,13 @@ class alignment:
         # One blob detected in the image
         elif keypoints_num == 1:
 
-            # Odroid keypoints ------------------ Warning -----------------            
-            #x = keypoints[0].pt[0]
-            #y = keypoints[0].pt[1]
+            # Odroid keypoints             
+            x = keypoints[0].pt[0]
+            y = keypoints[0].pt[1]
 
-            # Gazebo keypoints
-            x = keypoints[0].pt[1]
-            y = keypoints[0].pt[0]
+            # Gazebo keypoints ------------------ Warning -----------------
+            # x = keypoints[0].pt[1]
+            # y = keypoints[0].pt[0]
 
             vector2D = new_pixel_position([x, y], self.ocam_model)
 
@@ -190,13 +190,13 @@ class alignment:
             dist1 = (vector2D[0]**2 + vector2D[1]**2)**0.5
             for i in range(keypoints_num):
 
-                # Odroid keypoints ------------- Warning -----------------           
-                # x = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[x]
-                # y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
+                # Odroid keypoints 
+                x = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[x]
+                y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
                 
-                # Gazebo keypoints
-                x = keypoints[i].pt[1]
-                y = keypoints[i].pt[0]
+                # Gazebo keypoints ------------- Warning -----------------           
+                # x = keypoints[i].pt[1]
+                # y = keypoints[i].pt[0]
 
                 tmp_vector = new_pixel_position([x, y], self.ocam_model)
                 dist2 = (tmp_vector[0]**2 + tmp_vector[1]**2)**0.5
@@ -231,10 +231,10 @@ def main():
     uav = alignment()
     
     # Subscribe to camera Image topic (Real time application)  
-    # rospy.Subscriber("/usb_cam/image_raw", Image , uav.load_image)
+    rospy.Subscriber("/usb_cam/image_raw", Image , uav.load_image)
 
     # Subscribe to Gazebo camera Image topic (Simulation) -------Warning------------
-    rospy.Subscriber("/iris/usb_cam/image_raw",Image , uav.load_image)
+    # rospy.Subscriber("/iris/usb_cam/image_raw",Image , uav.load_image)
 
     # Publisher of filtered image   
     img_pub = rospy.Publisher("/laser_alignment/blob_detector/image_raw", \
@@ -276,7 +276,7 @@ def main():
 
         uav.coordinates.xp = 0 
         uav.coordinates.yp = 0
-        #servo_pub = rospy.Publisher("/servo", UInt16, queue_size=10)
+        
 
 
 #===================================================================================
