@@ -279,7 +279,7 @@ class Controller:
 
 
         # Switch to velocity setpoints (Laser coordinates)       
-        if self.alignment_flag:
+        if self.alignment_flag and self.coordinates.blob:
 
             # Set the flag to use velocity setpoints and yaw angle
             self.sp.type_mask = int('010111000111', 2)
@@ -295,7 +295,7 @@ class Controller:
             self.sp.velocity.z = self.u_z 
 
             # x and y controller based on distance from blob center to image center (0,0)                 
-            if self.coordinates.blob:
+            if ez < 0.1:
                 
                 self.SetPoint_x  = 0
                 self.SetPoint_y  = 0
