@@ -87,7 +87,7 @@ class Controller:
     # initialization method
     def __init__(self):
         # Drone state
-        self.state = State()
+        # self.state = State()
         # Instantiate laser pixel coordinates
         self.coordinates = Pixel_coordinates()
         # Instantiate a setpoints message
@@ -146,8 +146,8 @@ class Controller:
         self.SetPoint_y  = 0
 
         # Controller values
-        self.kp_val = 0.003 
-        self.ki_val = 0.0004 
+        self.kp_val = 0.0003 #0.003 
+        self.ki_val = 0.0004 #0.0004
         self.pxl_err = 4
 
     # Keep drone inside the cage area limits
@@ -162,8 +162,8 @@ class Controller:
 
     # Callbacks
     def PID_z(self, current_z):
-        Kp_z = 1.5
-        Ki_z = 0.01
+        Kp_z = 0.5 #prev 0.5
+        Ki_z = 0.1 #prev 0.1 
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_z
@@ -268,52 +268,55 @@ class Controller:
             self.alignment_flag = 0
 
     ## Drone State callback
-    def stateCb(self, msg):
-        self.state = msg
+    # def stateCb(self, msg):
+        #self.state = msg
 
     ## Update setpoint message
     def updateSp(self):
 
-        x = -1.0*self.joy_msg.axes[1]
-        y = -1.0*self.joy_msg.axes[0]
+        x = 1.0*self.joy_msg.axes[1]
+        y = 1.0*self.joy_msg.axes[0]
 
 
         # Switch to velocity setpoints (Laser coordinates)       
-        if self.alignment_flag and self.coordinates.blob:
+        if self.alignment_flag:
 
             # Set the flag to use velocity setpoints and yaw angle
             self.sp.type_mask = int('010111000111', 2)
+            print "Velocity Controller active"
 
             # Altitude controller based on local position
             self.SetPoint_z  = self.ALT_SP
             self.PID_z(self.local_pos.z)
             ez = abs(self.ALT_SP - self.local_pos.z)
-            if ez < 0.01 :
-                 self.sp.velocity.z = 0
-            elif ez > 0.01 :
-                 self.sp.velocity.z = self.u_z 
-            
-            # x and y controller based on distance from blob center to image center (0,0)
-            self.SetPoint_x  = 0
-            self.SetPoint_y  = 0
-            self.PID_x(self.coordinates.xp)
-            self.PID_y(self.coordinates.yp)
-            self.u_x= -np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
-            self.u_y= -np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
-            
-            ex = abs(self.SetPoint_x - self.coordinates.xp)
-            ey = abs(self.SetPoint_x - self.coordinates.yp)
-            
-            
-            if ex < self.pxl_err:
-                self.sp.velocity.x = 0
-            elif ex > self.pxl_err:
-                self.sp.velocity.x = self.u_x
+            # if ez < 0.001 :
+            #      self.sp.velocity.z = 0
+            # elif ez > 0.001 :
+            self.sp.velocity.z = self.u_z 
 
-            if ey < self.pxl_err:
-                self.sp.velocity.y = 0    
-            elif ey > self.pxl_err:
-                self.sp.velocity.y = self.u_y
+            # x and y controller based on distance from blob center to image center (0,0)                 
+            if self.coordinates.blob:
+                
+                self.SetPoint_x  = 0
+                self.SetPoint_y  = 0
+                self.PID_x(self.coordinates.xp)
+                self.PID_y(self.coordinates.yp)
+                self.u_x= -np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
+                self.u_y= -np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
+                
+                ex = abs(self.SetPoint_x - self.coordinates.xp)
+                ey = abs(self.SetPoint_x - self.coordinates.yp)
+                
+                
+                if ex < self.pxl_err:
+                    self.sp.velocity.x = 0
+                elif ex > self.pxl_err:
+                    self.sp.velocity.x = self.u_x
+
+                if ey < self.pxl_err:
+                    self.sp.velocity.y = 0    
+                elif ey > self.pxl_err:
+                    self.sp.velocity.y = self.u_y
             
 
             #print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
@@ -336,6 +339,7 @@ class Controller:
         # Switch to position setpoints (Joystick)    
         else:
             # set the flag to use position setpoints and yaw angle
+            print "Manual mode (Joystick)"
             self.sp.type_mask = int('010111111000', 2)
             # Update 
             xsp = self.local_pos.x + self.STEP_SIZE*x
@@ -364,7 +368,7 @@ def main():
     rate = rospy.Rate(20.0)
 
     # Subscribe to drone state
-    rospy.Subscriber('mavros/state', State, cnt.stateCb)
+    #rospy.Subscriber('mavros/state', State, cnt.stateCb)
 
     # Subscribe to drone's local position
     rospy.Subscriber('mavros/local_position/pose', PoseStamped, cnt.posCb)

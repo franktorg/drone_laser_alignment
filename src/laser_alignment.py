@@ -162,19 +162,19 @@ class alignment:
             self.coordinates.xp = 0
             self.coordinates.yp = 0
             self.coordinates.blob = 0 
-            print("No blobs detected")
+            # print("No blobs detected")
             
         # One blob detected in the image
         elif keypoints_num == 1:
 
             # Odroid keypoints             
-            x = keypoints[0].pt[0]
-            y = keypoints[0].pt[1]
+            x = keypoints[0].pt[1]
+            y = keypoints[0].pt[0]
 
             # Gazebo keypoints ------------------ Warning -----------------
             # x = keypoints[0].pt[1]
             # y = keypoints[0].pt[0]
-
+            #print("Blob detected at:[", x, y,"]")
             vector2D = new_pixel_position([x, y], self.ocam_model)
 
             self.coordinates.xp = vector2D[0]
@@ -191,8 +191,8 @@ class alignment:
             for i in range(keypoints_num):
 
                 # Odroid keypoints 
-                x = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[x]
-                y = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[y]
+                x = keypoints[i].pt[1] # keypoints [Keypoint No.].pt[x]
+                y = keypoints[i].pt[0] # keypoints [Keypoint No.].pt[y]
                 
                 # Gazebo keypoints ------------- Warning -----------------           
                 # x = keypoints[i].pt[1]
