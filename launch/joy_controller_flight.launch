@@ -20,4 +20,18 @@
     <node pkg="drone_laser_alignment" type="laser_alignment.py" name="laser_alignment"  required="true" output="screen">
     </node>
 
+    <!-- Visualize usb_cam raw image -->
+    <node name="image_view_raw" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/usb_cam/image_raw"/>
+        <param name="autosize" value="false" />
+    </node>
+
+    <!-- Visualize blob image -->
+    <node name="blob_image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/laser_alignment/blob_detector/image_raw"/>
+        <param name="autosize" value="false" />
+    </node>
+
+    
+    
 </launch>

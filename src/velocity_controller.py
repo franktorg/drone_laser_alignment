@@ -146,8 +146,8 @@ class Controller:
         self.SetPoint_y  = 0
 
         # Controller values
-        self.kp_val = 0.0003 #0.003 
-        self.ki_val = 0.0004 #0.0004
+        self.kp_val = 0.0005 #0.0005
+        self.ki_val = 0.0007 #0.0007
         self.pxl_err = 4
 
     # Keep drone inside the cage area limits
@@ -184,8 +184,8 @@ class Controller:
         
 
     def PID_x(self, current_x):
-        Kp_x = self.kp_val
-        Ki_x = self.ki_val
+        Kp_x = self.kp_val 
+        Ki_x = self.ki_val*1.3 
 
 
         self.current_time = time.time()
@@ -205,8 +205,8 @@ class Controller:
 
     def PID_y(self, current_y):
 
-        Kp_y = self.kp_val 
-        Ki_y = self.ki_val
+        Kp_y = self.kp_val #0.00033
+        Ki_y = self.ki_val #0.0004
         
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
@@ -301,8 +301,8 @@ class Controller:
                 self.SetPoint_y  = 0
                 self.PID_x(self.coordinates.xp)
                 self.PID_y(self.coordinates.yp)
-                self.u_x= -np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
-                self.u_y= -np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
+                self.u_x= np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
+                self.u_y= np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
                 
                 ex = abs(self.SetPoint_x - self.coordinates.xp)
                 ey = abs(self.SetPoint_x - self.coordinates.yp)

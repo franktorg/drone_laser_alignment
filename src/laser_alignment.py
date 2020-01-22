@@ -111,14 +111,15 @@ class alignment:
         # Filter by Area.
         params.filterByArea = True
         params.minArea = 800
+        params.maxArea = 1000000
 
         # Filter by Circularity
         params.filterByCircularity = False
         params.minCircularity = 0.1
 
         # Filter by Convexity
-        params.filterByConvexity = True
-        params.minConvexity = 0.7
+        params.filterByConvexity = False
+        params.minConvexity = 0.5
 
         # Filter by Inertia
         params.filterByInertia = False
@@ -213,7 +214,8 @@ class alignment:
             self.coordinates.blob = 1
 
             # print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
-       
+
+    
 
 # End alignment class
 
@@ -230,8 +232,10 @@ def main():
     # Create alignment object
     uav = alignment()
     
+    image_raw = "/usb_cam/image_raw"
+
     # Subscribe to camera Image topic (Real time application)  
-    rospy.Subscriber("/usb_cam/image_raw", Image , uav.load_image)
+    rospy.Subscriber(image_raw, Image, uav.load_image)
 
     # Subscribe to Gazebo camera Image topic (Simulation) -------Warning------------
     # rospy.Subscriber("/iris/usb_cam/image_raw",Image , uav.load_image)
@@ -255,6 +259,8 @@ def main():
 
         # Publish blobs in image    
         img_pub.publish(uav.bridge.cv2_to_imgmsg(blob_img,"bgr8"))
+
+
 
         # New pixel coordinate
         # for i in range(len(uav.coordinates)):
