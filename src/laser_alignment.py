@@ -45,7 +45,7 @@ class alignment:
         ocam_mod['e'] = float(-0.1257)
         
         # Experimental center
-        ocam_mod['cx'] = float(233) 
+        ocam_mod['cx'] = float(233) #float(210) -> Test 
         ocam_mod['cy'] = float(305)
         self.ocam_model = ocam_mod
 
@@ -110,7 +110,7 @@ class alignment:
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 800
+        params.minArea = 100
         params.maxArea = 1000000
 
         # Filter by Circularity

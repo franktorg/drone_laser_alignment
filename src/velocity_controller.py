@@ -103,7 +103,7 @@ class Controller:
 
         # We will fly at a fixed altitude for now
         # Altitude setpoint, [meters]
-        self.ALT_SP = 1.0
+        self.ALT_SP = 1.5
         # update the setpoint message with the required altitude
         self.sp.position.z = self.ALT_SP
 
