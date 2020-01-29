@@ -206,7 +206,7 @@ class Controller:
     def PID_y(self, current_y):
 
         Kp_y = self.kp_val #0.00033
-        Ki_y = self.ki_val #0.0004
+        Ki_y = self.ki_val*1.3 #0.0004
         
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y

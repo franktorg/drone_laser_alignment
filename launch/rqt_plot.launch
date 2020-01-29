@@ -12,4 +12,10 @@
     <!-- Plot z drone position -->
     <node name="zpos_plot" pkg="rqt_plot" type="rqt_plot"
         args="/mavros/local_position/pose/pose/position/z" />
+
+    <!-- Plot sended setpoints -->
+    <!-- <node name="setpoints_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/setpoint_raw/local/position /mavros/setpoint_raw/local/velocity" /> -->
+    
+
 </launch>

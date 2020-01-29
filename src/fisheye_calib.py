@@ -121,8 +121,8 @@ def undistort_point(point2D, ocam_model):
     return vector2D
 
 #===================================================================================
-# Own function to map a pixel point 'point2D' onto new pixel point from camera center
-# frame
+# Own function to map a pixel point 'point2D' onto new pixel point(photodetector) 
+# from camera center frame
 # Input: - Pixel point: 2x1 matrix containing the pixel coordinate of the image
 #                       point [x,y]
 #        - Ocam model: Contains the model of the calibrated camera
@@ -130,9 +130,10 @@ def undistort_point(point2D, ocam_model):
 #=================================================================================== 
 
 def new_pixel_position(point2D, ocam_model):
-    vector2D = []    
-    xp = point2D[0] - ocam_model['cx']
-    yp = point2D[1] - ocam_model['cy']
+    vector2D = []
+
+    xp = point2D[0] - ocam_model['cx'] #+ ocam_model['pdx']
+    yp = point2D[1] - ocam_model['cy'] #+ ocam_model['pdy']
 
     vector2D.append(xp)
     vector2D.append(yp)
