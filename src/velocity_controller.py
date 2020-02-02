@@ -117,7 +117,7 @@ class Controller:
 
         # Fence. We will assume a rectangular fence [Cage flight area]
         self.FENCE_LIMIT_X = 1.5
-        self.FENCE_LIMIT_Y = 2
+        self.FENCE_LIMIT_Y = 2.0
         
         # A Message for the current local position of the drone(Anchor)
         self.local_pos = Point(0.0, 0.0, 0.0)
@@ -125,30 +125,37 @@ class Controller:
 
         self.modes = fcuModes()
 
-        # Position controllers
+        # Velocity controllers
         self.current_time = time.time()
         self.last_time_z = self.current_time
         self.last_time_y = self.current_time
         self.last_time_x = self.current_time
 
-        self.windup_guard = 20
+        self.last_error_z = 0.0
+        self.last_error_y = 0.0
+        self.last_error_x = 0.0
+        self.windup_guard = 20.0
 
         self.u_z = 0.0
         self.ITerm_z = 0.0
+        self.DTerm_z = 0.0
         self.SetPoint_z  = self.ALT_SP
 
         self.u_x = 0.0
         self.ITerm_x = 0.0
-        self.SetPoint_x  = 0
+        self.DTerm_x = 0.0
+        self.SetPoint_x  = 0.0
 
         self.u_y = 0.0
         self.ITerm_y = 0.0
-        self.SetPoint_y  = 0
+        self.DTerm_y = 0.0
+        self.SetPoint_y  = 0.0
 
         # Controller values
         self.kp_val = 0.0005 #0.0005
         self.ki_val = 0.0007 #0.0007
-        self.pxl_err = 4
+        self.kd_val = 0.0001 
+        self.pxl_err = 4.0
 
     # Keep drone inside the cage area limits
     def bound(self, v, low, up):
@@ -164,35 +171,45 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 0.5 #prev 0.5
         Ki_z = 0.1 #prev 0.1 
+        Kd_z = 0.01
+
+        error_z = self.SetPoint_z - current_z
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_z
-        self.last_time_z = self.current_time       
+        delta_error = error_z - self.last_error_z
 
-        error_z = self.SetPoint_z - current_z
         PTerm_z =  Kp_z * error_z
         self.ITerm_z += error_z * delta_time
 
         if (self.ITerm_z < -self.windup_guard):
             self.ITerm_z = -self.windup_guard
-
         elif (self.ITerm_z > self.windup_guard):
             self.ITerm_z = self.windup_guard
 
-        self.u_z = PTerm_z + (Ki_z * self.ITerm_z)
+        self.DTerm_z = 0.0
+        if delta_time > 0:
+            self.DTerm_z = delta_error / delta_time
+
+        # Remember last time and last error for next calculation
+        self.last_time_z = self.current_time 
+        self.last_error_z = error_z          
+
+        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
 
         
 
     def PID_x(self, current_x):
         Kp_x = self.kp_val 
-        Ki_x = self.ki_val*1.3 
+        Ki_x = self.ki_val*1.3
+        Kd_x = self.kd_val 
 
+        error_x = abs(self.SetPoint_x - current_x)
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_x
-        self.last_time_x = self.current_time
+        delta_error = error_x -self.last_error_x
 
-        error_x = abs(self.SetPoint_x - current_x)
         PTerm_x =  Kp_x * error_x
         self.ITerm_x += error_x * delta_time
 
@@ -201,27 +218,45 @@ class Controller:
         elif (self.ITerm_x > self.windup_guard):
             self.ITerm_x = self.windup_guard
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x)
+        self.DTerm_x = 0.0
+        if delta_time > 0:
+            self.DTerm_x = delta_error / delta_time
+
+        # Remember last time and last error for next calculation
+        self.last_time_x = self.current_time 
+        self.last_error_z = error_z 
+
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
 
     def PID_y(self, current_y):
 
         Kp_y = self.kp_val #0.00033
         Ki_y = self.ki_val*1.3 #0.0004
+        Kd_y = self.kd_val
         
+        error_x = abs(self.SetPoint_y - current_y)
+
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
-        self.last_time_y = self.current_time
+        delta_error = error_y -self.last_error_y
 
-        error_y = abs(self.SetPoint_y - current_y)
         PTerm_y =  Kp_y * error_y
-        self.ITerm_y += error_y * delta_time
+        self.ITerm_x += error_y * delta_time
 
         if (self.ITerm_y < -self.windup_guard):
             self.ITerm_y = -self.windup_guard
         elif (self.ITerm_y > self.windup_guard):
             self.ITerm_y = self.windup_guard
 
-        self.u_y = PTerm_y + (Ki_y * self.ITerm_y)
+        self.DTerm_y = 0.0
+        if delta_time > 0:
+            self.DTerm_y = delta_error / delta_time
+
+        # Remember last time and last error for next calculation
+        self.last_time_x = self.current_time 
+        self.last_error_z = error_z 
+
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
 
   
     ## local position callback
