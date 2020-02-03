@@ -154,7 +154,7 @@ class Controller:
         # Controller values
         self.kp_val = 0.003 
         self.ki_val = 0.0004
-        self.kd_val  = 0.0001 
+        self.kd_val  = 0.0009 
         self.pxl_err = 4
 
     # Keep drone inside the cage area limits
@@ -171,7 +171,7 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 1.5
         Ki_z = 0.01
-        Kd_z = 0.001
+        Kd_z = 0.009
 
         error_z = self.SetPoint_z - current_z
 
@@ -195,7 +195,7 @@ class Controller:
         self.last_time_z = self.current_time 
         self.last_error_z = error_z          
 
-        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
+        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) #+ (Kd_z * self.DTerm_z)
 
         
 
@@ -316,6 +316,7 @@ class Controller:
         # Switch to velocity setpoints (Laser coordinates)       
         if self.alignment_flag and self.coordinates.blob:
 
+            print "Velocity Controller"
             # Set the flag to use velocity setpoints and yaw angle
             self.sp.type_mask = int('010111000111', 2)
 
