@@ -162,7 +162,7 @@ class alignment:
             self.coordinates.xp = 0
             self.coordinates.yp = 0
             self.coordinates.blob = 0 
-            print("No blobs detected")
+            #print("No blobs detected")
             
         # One blob detected in the image
         elif keypoints_num == 1:

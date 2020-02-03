@@ -153,7 +153,8 @@ class Controller:
 
         # Controller values
         self.kp_val = 0.003 
-        self.ki_val = 0.0004 
+        self.ki_val = 0.0004
+        self.kd_val  = 0.0001 
         self.pxl_err = 4
 
     # Keep drone inside the cage area limits
@@ -170,7 +171,7 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 1.5
         Ki_z = 0.01
-        Kd_z = 0.01
+        Kd_z = 0.001
 
         error_z = self.SetPoint_z - current_z
 
@@ -223,7 +224,7 @@ class Controller:
 
         # Remember last time and last error for next calculation
         self.last_time_x = self.current_time 
-        self.last_error_z = error_z 
+        self.last_error_x = error_x 
 
         self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
 
@@ -233,7 +234,7 @@ class Controller:
         Ki_y = self.ki_val
         Kd_y = self.kd_val
         
-        error_x = abs(self.SetPoint_y - current_y)
+        error_y = abs(self.SetPoint_y - current_y)
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
@@ -252,10 +253,10 @@ class Controller:
             self.DTerm_y = delta_error / delta_time
 
         # Remember last time and last error for next calculation
-        self.last_time_x = self.current_time 
-        self.last_error_z = error_z 
+        self.last_time_y = self.current_time 
+        self.last_error_y = error_y 
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
 
   
     ## local position callback
@@ -328,7 +329,7 @@ class Controller:
             self.sp.velocity.z = self.u_z 
             
             # x and y controller based on distance from blob center to image center (0,0)
-            if ez < 0.1
+            if ez < 0.1:
                 self.SetPoint_x  = 0
                 self.SetPoint_y  = 0
                 self.PID_x(self.coordinates.xp)
