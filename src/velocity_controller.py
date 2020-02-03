@@ -224,7 +224,7 @@ class Controller:
 
         # Remember last time and last error for next calculation
         self.last_time_x = self.current_time 
-        self.last_error_z = error_z 
+        self.last_error_x = error_x 
 
         self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
 
@@ -234,7 +234,7 @@ class Controller:
         Ki_y = self.ki_val*1.3 #0.0004
         Kd_y = self.kd_val
         
-        error_x = abs(self.SetPoint_y - current_y)
+        error_y = abs(self.SetPoint_y - current_y)
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
@@ -253,10 +253,10 @@ class Controller:
             self.DTerm_y = delta_error / delta_time
 
         # Remember last time and last error for next calculation
-        self.last_time_x = self.current_time 
-        self.last_error_z = error_z 
+        self.last_time_y = self.current_time 
+        self.last_error_y = error_y 
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
 
   
     ## local position callback
