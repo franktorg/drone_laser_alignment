@@ -195,7 +195,7 @@ class Controller:
         self.last_time_z = self.current_time 
         self.last_error_z = error_z          
 
-        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
+        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) #+ (Kd_z * self.DTerm_z)
 
         
 
@@ -226,7 +226,7 @@ class Controller:
         self.last_time_x = self.current_time 
         self.last_error_x = error_x 
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) #+ (Kd_x * self.DTerm_x)
 
     def PID_y(self, current_y):
 
@@ -256,7 +256,7 @@ class Controller:
         self.last_time_y = self.current_time 
         self.last_error_y = error_y 
 
-        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) #+ (Kd_y * self.DTerm_y)
 
   
     ## local position callback

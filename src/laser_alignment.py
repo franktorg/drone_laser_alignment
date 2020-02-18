@@ -45,12 +45,8 @@ class alignment:
         ocam_mod['e'] = float(-0.1257)
         
         # Experimental center
-        ocam_mod['cx'] = float(228) #float(233) Cam Center 
+        ocam_mod['cx'] = float(233) #float(233) Cam Center 
         ocam_mod['cy'] = float(283) #float(305) Cam Center
-
-        # Photodetector position from center
-        ocam_mod['pdx'] = float(55) 
-        ocam_mod['pdy'] = float(37)
 
         self.ocam_model = ocam_mod
 
