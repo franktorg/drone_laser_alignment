@@ -94,8 +94,11 @@ class Controller:
         self.sp = PositionTarget()
         # set the flag to use velocity and position setpoints, and yaw angle
         self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
-        # LOCAL_NED
-        self.sp.coordinate_frame = 1
+        # BODY_NED
+        self.sp.coordinate_frame = 8
+        # Yaw Setpoint
+        self.sp.yaw = 0.0
+
         # Joystick button
         self.alignment_flag = 0
         # Instantiate a velocity setpoint message
@@ -312,6 +315,8 @@ class Controller:
         x = 1.0*self.joy_msg.axes[1]
         y = 1.0*self.joy_msg.axes[0]
 
+        self.sp.yaw = 0.0
+        self.sp.yaw_rate = 0.0
 
         # Switch to velocity setpoints (Laser coordinates)       
         if self.alignment_flag and self.coordinates.blob:
@@ -358,9 +363,6 @@ class Controller:
             #print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
             #print "ez : ",self.ALT_SP - self.local_pos.z," u_z : ",self.u_z
         
-            
-                
-
             #landing
             # if z < 0 or z == 0:
             #     #print("Landing mode")
@@ -370,6 +372,10 @@ class Controller:
             #     print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
             # elif (z<0) and abs(self.local_pos.z - 0)<0.01:
             #     self.sp.velocity.z = 0
+
+            else:
+                self.sp.velocity.x = 0
+                self.sp.velocity.y = 0
 
         # Switch to position setpoints (Joystick)    
         else:
