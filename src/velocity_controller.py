@@ -94,8 +94,10 @@ class Controller:
         self.sp = PositionTarget()
         # set the flag to use velocity and position setpoints, and yaw angle
         self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
-        # LOCAL_NED
-        self.sp.coordinate_frame = 1
+        # BODY_NED
+        self.sp.coordinate_frame = 8
+        # Yaw Setpoint
+        self.sp.yaw = 0.0
         # Joystick button
         self.alignment_flag = 0
         # Instantiate a velocity setpoint message
@@ -171,7 +173,7 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 1.5
         Ki_z = 0.01
-        Kd_z = 0.009
+        Kd_z = 0.1
 
         error_z = self.SetPoint_z - current_z
 
@@ -195,7 +197,7 @@ class Controller:
         self.last_time_z = self.current_time 
         self.last_error_z = error_z          
 
-        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) #+ (Kd_z * self.DTerm_z)
+        self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
 
         
 
@@ -226,7 +228,7 @@ class Controller:
         self.last_time_x = self.current_time 
         self.last_error_x = error_x 
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) #+ (Kd_x * self.DTerm_x)
 
     def PID_y(self, current_y):
 
@@ -256,7 +258,7 @@ class Controller:
         self.last_time_y = self.current_time 
         self.last_error_y = error_y 
 
-        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) #+ (Kd_y * self.DTerm_y)
 
   
     ## local position callback
@@ -312,13 +314,16 @@ class Controller:
         x = -1.0*self.joy_msg.axes[1]
         y = -1.0*self.joy_msg.axes[0]
 
+        self.sp.yaw = 0.0
+        self.sp.yaw_rate = 0.0
+
 
         # Switch to velocity setpoints (Laser coordinates)       
         if self.alignment_flag and self.coordinates.blob:
 
             print "Velocity Controller"
             # Set the flag to use velocity setpoints and yaw angle
-            self.sp.type_mask = int('010111000111', 2)
+            #self.sp.type_mask = int('010111000111', 2)
 
             # Altitude controller based on local position
             self.SetPoint_z  = self.ALT_SP
@@ -329,6 +334,7 @@ class Controller:
             # elif ez > 0.01 :
             self.sp.velocity.z = self.u_z 
             
+
             # x and y controller based on distance from blob center to image center (0,0)
             if ez < 0.1:
                 self.SetPoint_x  = 0
@@ -369,12 +375,16 @@ class Controller:
                 #     print "ez : ",self.ALT_SP-self.sp.position.z," u_z : ",self.u_z
                 # elif (z<0) and abs(self.local_pos.z - 0)<0.01:
                 #     self.sp.velocity.z = 0
+            else:
+                self.sp.velocity.x = 0
+                self.sp.velocity.y = 0
+
 
         # Switch to position setpoints (Joystick)    
         else:
             # set the flag to use position setpoints and yaw angle
             print "Manual mode (Joystick)"
-            self.sp.type_mask = int('010111111000', 2)
+            # self.sp.type_mask = int('010111111000', 2)
             # Update 
             xsp = self.local_pos.x + self.STEP_SIZE*x
             ysp = self.local_pos.y + self.STEP_SIZE*y
