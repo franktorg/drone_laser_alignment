@@ -3,7 +3,7 @@
 # ROS python API
 import rospy
 # Laser pixel coordinates message structure
-from drone_laser_alignment.msg import Pixel_coordinates
+from drone_laser_alignment.msg import Pixel_coordinates, PID_velocities
 # Joy message structure
 from sensor_msgs.msg import Joy
 # 3D point & Stamped Pose msgs
@@ -92,10 +92,15 @@ class Controller:
         self.coordinates = Pixel_coordinates()
         # Instantiate a setpoints message
         self.sp = PositionTarget()
+        # PID velocities 
+        self.pid = PID_velocities()
+        self.pid.ux = 0.0
+        self.pid.uy = 0.0
+        self.pid.uz = 0.0
         # set the flag to use velocity and position setpoints, and yaw angle
         self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
         # BODY_NED
-        self.sp.coordinate_frame = 8
+        self.sp.coordinate_frame = 1
         # Yaw Setpoint
         self.sp.yaw = 0.0
         # Joystick button
@@ -156,7 +161,7 @@ class Controller:
         # Controller values
         self.kp_val = 0.003 
         self.ki_val = 0.0004
-        self.kd_val  = 0.0009 
+        self.kd_val = 0.0 #0.0009 
         self.pxl_err = 4
 
     # Keep drone inside the cage area limits
@@ -173,7 +178,7 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 1.5
         Ki_z = 0.01
-        Kd_z = 0.1
+        Kd_z = 0
 
         error_z = self.SetPoint_z - current_z
 
@@ -228,7 +233,7 @@ class Controller:
         self.last_time_x = self.current_time 
         self.last_error_x = error_x 
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) #+ (Kd_x * self.DTerm_x)
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
 
     def PID_y(self, current_y):
 
@@ -258,7 +263,7 @@ class Controller:
         self.last_time_y = self.current_time 
         self.last_error_y = error_y 
 
-        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) #+ (Kd_y * self.DTerm_y)
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
 
   
     ## local position callback
@@ -317,26 +322,27 @@ class Controller:
         self.sp.yaw = 0.0
         self.sp.yaw_rate = 0.0
 
+        # Altitude controller based on local position
+        self.SetPoint_z  = self.ALT_SP
+        self.PID_z(self.local_pos.z)
+        ez = abs(self.ALT_SP - self.local_pos.z)
+        # if ez < 0.01 :
+        #      self.sp.velocity.z = 0
+        # elif ez > 0.01 :
+        
+
 
         # Switch to velocity setpoints (Laser coordinates)       
-        if self.alignment_flag and self.coordinates.blob:
+        if self.alignment_flag: #nd self.coordinates.blob:
 
             print "Velocity Controller"
             # Set the flag to use velocity setpoints and yaw angle
-            #self.sp.type_mask = int('010111000111', 2)
-
-            # Altitude controller based on local position
-            self.SetPoint_z  = self.ALT_SP
-            self.PID_z(self.local_pos.z)
-            ez = abs(self.ALT_SP - self.local_pos.z)
-            # if ez < 0.01 :
-            #      self.sp.velocity.z = 0
-            # elif ez > 0.01 :
-            self.sp.velocity.z = self.u_z 
+            self.sp.type_mask = int('010111000111', 2)
+            self.sp.velocity.z = self.u_z
+             
             
-
             # x and y controller based on distance from blob center to image center (0,0)
-            if ez < 0.1:
+            if ez < 0.1 and self.coordinates.blob:
                 self.SetPoint_x  = 0
                 self.SetPoint_y  = 0
                 self.PID_x(self.coordinates.xp)
@@ -379,12 +385,15 @@ class Controller:
                 self.sp.velocity.x = 0
                 self.sp.velocity.y = 0
 
+            self.pid.ux = self.sp.velocity.x
+            self.pid.uy = self.sp.velocity.y
+            self.pid.uz = self.u_z
 
         # Switch to position setpoints (Joystick)    
         else:
             # set the flag to use position setpoints and yaw angle
             print "Manual mode (Joystick)"
-            # self.sp.type_mask = int('010111111000', 2)
+            self.sp.type_mask = int('010111111000', 2)
             # Update 
             xsp = self.local_pos.x + self.STEP_SIZE*x
             ysp = self.local_pos.y + self.STEP_SIZE*y
@@ -430,6 +439,9 @@ def main():
     sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size = 1)
 
     joy_pub = rospy.Publisher('/joy', Joy, queue_size=1)
+
+    pid_pub = rospy.Publisher("/laser_alignment/velocity_pid", PID_velocities,\
+                                  queue_size = 1)
     
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
     k = 0
@@ -446,7 +458,7 @@ def main():
     while not rospy.is_shutdown():
         cnt.updateSp()
         sp_pub.publish(cnt.sp)
-        
+        pid_pub.publish(cnt.pid)
         #dist_anchor_tag_pub.publish(cnt.distance_anchor_tag)
         #vel_sp_pub.publish(cnt.vel_sp)
         rate.sleep()

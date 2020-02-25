@@ -1,17 +1,17 @@
 <launch>
 	<!-- Plot x drone and pixel positions -->
-    <node name="xpos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/x /laser_alignment/coordinates/xp" />
+    <!-- <node name="xpos_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/x /laser_alignment/coordinates/xp" /> -->
     
 
     <!-- Plot y drone and pixel positions -->
-    <node name="ypos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/y /laser_alignment/coordinates/yp" />
+    <!-- <node name="ypos_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/y /laser_alignment/coordinates/yp" /> -->
     
 
     <!-- Plot z drone position -->
     <node name="zpos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/z" />
+        args="/mavros/local_position/pose/pose/position/z /mavros/local_position/velocity_local/twist/linear/z /laser_alignment/velocity_pid/uz" />
 
     <!-- Plot sended setpoints -->
     <!-- <node name="setpoints_plot" pkg="rqt_plot" type="rqt_plot"
