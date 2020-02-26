@@ -10,9 +10,12 @@
     
 
     <!-- Plot z drone position -->
-    <node name="zpos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/z /mavros/local_position/velocity_local/twist/linear/z" />
+    <node name="zpos_and_vel_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/z /mavros/local_position/velocity_local/twist/linear/z /laser_alignment/velocity_pid/uz" />
 
+    <!-- Plot z pid controller values -->
+    <node name="z_controller_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/laser_alignment/velocity_pid/uz /laser_alignment/pid_values" />
 
     <!-- <node name="zvel_plot" pkg="rqt_plot" type="rqt_plot"
         args="/mavros/local_position/velocity/twist/linear/z" /> -->

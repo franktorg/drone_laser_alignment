@@ -50,6 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    Pixel_coordinates.msg
+   PID_velocities.msg
+   pid.msg
  )
 
 ## Generate services in the 'srv' folder

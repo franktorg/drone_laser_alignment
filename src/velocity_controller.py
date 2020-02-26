@@ -3,7 +3,7 @@
 # ROS python API
 import rospy
 # Laser pixel coordinates message structure
-from drone_laser_alignment.msg import Pixel_coordinates
+from drone_laser_alignment.msg import Pixel_coordinates, PID_velocities, pid
 # Joy message structure
 from sensor_msgs.msg import Joy
 # 3D point & Stamped Pose msgs
@@ -91,6 +91,18 @@ class Controller:
         self.coordinates = Pixel_coordinates()
         # Instantiate a setpoints message
         self.sp = PositionTarget()
+         # PID velocities 
+        self.pid = PID_velocities()
+        self.pid.ux = 0.0
+        self.pid.uy = 0.0
+        self.pid.uz = 0.0
+        # PID values
+        self.pid_values = pid()
+        self.pid_values.p = 0.0
+        self.pid_values.i = 0.0
+        self.pid_values.d = 0.0
+        self.pid_values.error = 0.0
+
         # set the flag to use velocity and position setpoints, and yaw angle
         self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
         # BODY_NED
@@ -136,19 +148,23 @@ class Controller:
         self.last_error_z = 0.0
         self.last_error_y = 0.0
         self.last_error_x = 0.0
-        self.windup_guard = 20.0
+        self.windup_guard = 25.0
 
+        # Z-axis
         self.u_z = 0.0
         self.ITerm_z = 0.0
         self.DTerm_z = 0.0
         self.SetPoint_z  = self.ALT_SP
         self.windup_uz = 0.2
+        self.last_dterm_z = 0.0
 
+        # X-axis
         self.u_x = 0.0
         self.ITerm_x = 0.0
         self.DTerm_x = 0.0
         self.SetPoint_x  = 0.0
 
+        # Y-axis
         self.u_y = 0.0
         self.ITerm_y = 0.0
         self.DTerm_y = 0.0
@@ -174,7 +190,7 @@ class Controller:
     def PID_z(self, current_z):
         Kp_z = 0.5 #prev 0.5
         Ki_z = 0.25 #prev 0.1 
-        Kd_z = 0.01
+        Kd_z = 0.05 #prev 0.01
 
         error_z = self.SetPoint_z - current_z
 
@@ -190,23 +206,29 @@ class Controller:
         elif (self.ITerm_z > self.windup_guard):
             self.ITerm_z = self.windup_guard
 
-        self.DTerm_z = 0.0
-        if delta_time > 0:
+        if delta_time > 0.0:
             self.DTerm_z = delta_error / delta_time
+        else:
+            self.DTerm_z = self.last_dterm_z
 
         # Remember last time and last error for next calculation
         self.last_time_z = self.current_time 
         self.last_error_z = error_z          
+        self.last_dterm_z = self.DTerm_z
+
+        # Check contribution for each parameter - Tunning purposes
+        self.pid_values.p = PTerm_z
+        self.pid_values.i = Ki_z * self.ITerm_z
+        self.pid_values.d = Kd_z * self.DTerm_z
+        self.pid_values.error = error_z
+
 
         self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
 
-        # if (tmp_u_z < -self.windup_uz):
-        #     tmp_u_z = -self.windup_uz
-        # elif (tmp_u_z > self.windup_uz):
-        #     tmp_u_z = self.windup_uz
-
-         
-
+        if (self.u_z < -self.windup_uz):
+             self.u_z = -self.windup_uz
+        elif (self.u_z > self.windup_uz):
+             self.u_z = self.windup_uz
         
 
     def PID_x(self, current_x):
@@ -323,8 +345,9 @@ class Controller:
         y = 1.0*self.joy_msg.axes[0]
 
         self.sp.coordinate_frame = 1
-        
-        #self.sp.yaw_rate = 0.0
+   
+        self.sp.yaw = 0.0
+        self.sp.yaw_rate = 0.0
         
 
         # Switch to velocity setpoints (Laser coordinates)       
@@ -341,8 +364,9 @@ class Controller:
             # if ez < 0.01 :
             #      self.sp.velocity.z = 0
             # elif ez > 0.01 :
+            
             self.sp.velocity.z = self.u_z
-            self.sp.yaw = 0.0 
+             
 
             # x and y controller based on distance from blob center to image center (0,0)                 
             # if ez < 0.1:
@@ -369,9 +393,9 @@ class Controller:
             #         self.sp.velocity.y = self.u_y
             
 
-            # #print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
-            # #print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
-            # #print "ez : ",self.ALT_SP - self.local_pos.z," u_z : ",self.u_z
+            #print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
+            #print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
+            print "ez : ",self.ALT_SP - self.local_pos.z#," u_z : ",self.u_z
         
             # #landing
             # # if z < 0 or z == 0:
@@ -395,13 +419,14 @@ class Controller:
             # Update 
             xsp = self.local_pos.x + self.STEP_SIZE*x
             ysp = self.local_pos.y + self.STEP_SIZE*y
-            self.sp.yaw = 0.0
-
+            
             # limit
             self.sp.position.x = self.bound(xsp, -1.0*self.FENCE_LIMIT_X, self.FENCE_LIMIT_X)
             self.sp.position.y = self.bound(ysp, -1.0*self.FENCE_LIMIT_Y, self.FENCE_LIMIT_Y)
 
-            
+        self.pid.ux = self.sp.velocity.x
+        self.pid.uy = self.sp.velocity.y
+        self.pid.uz = self.sp.velocity.z    
          
 
         
@@ -418,7 +443,7 @@ def main():
 
     # ROS loop rate, [Hz]
     rate = rospy.Rate(20.0)
-
+    
     # Subscribe to drone state
     #rospy.Subscriber('mavros/state', State, cnt.stateCb)
 
@@ -435,10 +460,14 @@ def main():
     rospy.Subscriber('joy', Joy, cnt.joyCb)
 
     # Setpoint publisher
-    sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size = 1)
+    sp_pub = rospy.Publisher('mavros/setpoint_raw/local', PositionTarget, queue_size = 10)
 
     joy_pub = rospy.Publisher('/joy', Joy, queue_size=1)
+
+    pid_pub = rospy.Publisher("/laser_alignment/velocity_pid", PID_velocities, queue_size = 1)
     
+    pid_val_pub = rospy.Publisher("/laser_alignment/pid_values", pid, queue_size = 1)
+
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
     k = 0
     while k < 10:
@@ -453,6 +482,8 @@ def main():
     # ROS main loop
     while not rospy.is_shutdown():
         cnt.updateSp()
+        pid_val_pub.publish(cnt.pid_values)
+        pid_pub.publish(cnt.pid)
         sp_pub.publish(cnt.sp)
         
         #dist_anchor_tag_pub.publish(cnt.distance_anchor_tag)
