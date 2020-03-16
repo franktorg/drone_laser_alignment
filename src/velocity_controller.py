@@ -97,11 +97,23 @@ class Controller:
         self.pid.uy = 0.0
         self.pid.uz = 0.0
         # PID values
-        self.pid_values = pid()
-        self.pid_values.p = 0.0
-        self.pid_values.i = 0.0
-        self.pid_values.d = 0.0
-        self.pid_values.error = 0.0
+        self.pid_z_values = pid()
+        self.pid_z_values.p = 0.0
+        self.pid_z_values.i = 0.0
+        self.pid_z_values.d = 0.0
+        self.pid_z_values.error = 0.0
+
+        self.pid_x_values = pid()
+        self.pid_x_values.p = 0.0
+        self.pid_x_values.i = 0.0
+        self.pid_x_values.d = 0.0
+        self.pid_x_values.error = 0.0
+
+        self.pid_y_values = pid()
+        self.pid_y_values.p = 0.0
+        self.pid_y_values.i = 0.0
+        self.pid_y_values.d = 0.0
+        self.pid_y_values.error = 0.0
 
         # set the flag to use velocity and position setpoints, and yaw angle
         self.sp.type_mask = int('010111000000', 2) # int('010111111000', 2)
@@ -117,7 +129,7 @@ class Controller:
 
         # We will fly at a fixed altitude for now
         # Altitude setpoint, [meters]
-        self.ALT_SP = 1.2
+        self.ALT_SP = 1.5
         # update the setpoint message with the required altitude
         self.sp.position.z = self.ALT_SP
 
@@ -148,14 +160,15 @@ class Controller:
         self.last_error_z = 0.0
         self.last_error_y = 0.0
         self.last_error_x = 0.0
-        self.windup_guard = 25.0
+        self.windup_guard_z = 25.0
+        self.windup_guard_pxl = 25.0 #20.0
+        self.windup_vel = 0.2
 
         # Z-axis
         self.u_z = 0.0
         self.ITerm_z = 0.0
         self.DTerm_z = 0.0
         self.SetPoint_z  = self.ALT_SP
-        self.windup_uz = 0.2
         self.last_dterm_z = 0.0
 
         # X-axis
@@ -171,9 +184,9 @@ class Controller:
         self.SetPoint_y  = 0.0
 
         # Controller values
-        self.kp_val = 0.0005 #0.0005
-        self.ki_val = 0.0007 #0.0007
-        self.kd_val = 0.0001 
+        self.kp_val = 0.001 #0.001
+        self.ki_val = 0.0002 #0.0001
+        self.kd_val = 0.0000 
         self.pxl_err = 4.0
 
     # Keep drone inside the cage area limits
@@ -201,12 +214,12 @@ class Controller:
         PTerm_z =  Kp_z * error_z
         self.ITerm_z += error_z * delta_time
 
-        if (self.ITerm_z < -self.windup_guard):
-            self.ITerm_z = -self.windup_guard
-        elif (self.ITerm_z > self.windup_guard):
-            self.ITerm_z = self.windup_guard
+        if (self.ITerm_z < -self.windup_guard_z):
+            self.ITerm_z = -self.windup_guard_z
+        elif (self.ITerm_z > self.windup_guard_z):
+            self.ITerm_z = self.windup_guard_z
 
-        if delta_time > 0.0:
+        if delta_time > 0.001:
             self.DTerm_z = delta_error / delta_time
         else:
             self.DTerm_z = self.last_dterm_z
@@ -217,26 +230,26 @@ class Controller:
         self.last_dterm_z = self.DTerm_z
 
         # Check contribution for each parameter - Tunning purposes
-        self.pid_values.p = PTerm_z
-        self.pid_values.i = Ki_z * self.ITerm_z
-        self.pid_values.d = Kd_z * self.DTerm_z
-        self.pid_values.error = error_z
+        self.pid_z_values.p = PTerm_z
+        self.pid_z_values.i = Ki_z * self.ITerm_z
+        self.pid_z_values.d = Kd_z * self.DTerm_z
+        self.pid_z_values.error = error_z
 
 
         self.u_z = PTerm_z + (Ki_z * self.ITerm_z) + (Kd_z * self.DTerm_z)
 
-        if (self.u_z < -self.windup_uz):
-             self.u_z = -self.windup_uz
-        elif (self.u_z > self.windup_uz):
-             self.u_z = self.windup_uz
+        if (self.u_z < -self.windup_vel):
+             self.u_z = -self.windup_vel
+        elif (self.u_z > self.windup_vel):
+             self.u_z = self.windup_vel
         
 
     def PID_x(self, current_x):
         Kp_x = self.kp_val 
-        Ki_x = self.ki_val*1.3
+        Ki_x = self.ki_val
         Kd_x = self.kd_val 
 
-        error_x = abs(self.SetPoint_x - current_x)
+        error_x = self.SetPoint_x - current_x
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_x
@@ -245,10 +258,10 @@ class Controller:
         PTerm_x =  Kp_x * error_x
         self.ITerm_x += error_x * delta_time
 
-        if (self.ITerm_x < -self.windup_guard):
-            self.ITerm_x = -self.windup_guard
-        elif (self.ITerm_x > self.windup_guard):
-            self.ITerm_x = self.windup_guard
+        if (self.ITerm_x < -self.windup_guard_pxl):
+            self.ITerm_x = -self.windup_guard_pxl
+        elif (self.ITerm_x > self.windup_guard_pxl):
+            self.ITerm_x = self.windup_guard_pxl
 
         self.DTerm_x = 0.0
         if delta_time > 0:
@@ -256,29 +269,40 @@ class Controller:
 
         # Remember last time and last error for next calculation
         self.last_time_x = self.current_time 
-        self.last_error_x = error_x 
+        self.last_error_x = error_x
 
-        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) #+ (Kd_x * self.DTerm_x)
+        # Check contribution for each parameter - Tunning purposes
+        self.pid_x_values.p = PTerm_x
+        self.pid_x_values.i = Ki_x * self.ITerm_x
+        self.pid_x_values.d = Kd_x * self.DTerm_x
+        self.pid_x_values.error = error_x*0.001
+
+        self.u_x = PTerm_x + (Ki_x * self.ITerm_x) + (Kd_x * self.DTerm_x)
+
+        if (self.u_x < -self.windup_vel):
+             self.u_x = -self.windup_vel
+        elif (self.u_x > self.windup_vel):
+             self.u_x = self.windup_vel
 
     def PID_y(self, current_y):
 
         Kp_y = self.kp_val #0.00033
-        Ki_y = self.ki_val*1.3 #0.0004
+        Ki_y = self.ki_val #0.0007
         Kd_y = self.kd_val
         
-        error_y = abs(self.SetPoint_y - current_y)
+        error_y = self.SetPoint_y - current_y
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time_y
         delta_error = error_y -self.last_error_y
 
         PTerm_y =  Kp_y * error_y
-        self.ITerm_x += error_y * delta_time
+        self.ITerm_y += error_y * delta_time
 
-        if (self.ITerm_y < -self.windup_guard):
-            self.ITerm_y = -self.windup_guard
-        elif (self.ITerm_y > self.windup_guard):
-            self.ITerm_y = self.windup_guard
+        if (self.ITerm_y < -self.windup_guard_pxl):
+            self.ITerm_y = -self.windup_guard_pxl
+        elif (self.ITerm_y > self.windup_guard_pxl):
+            self.ITerm_y = self.windup_guard_pxl
 
         self.DTerm_y = 0.0
         if delta_time > 0:
@@ -286,9 +310,20 @@ class Controller:
 
         # Remember last time and last error for next calculation
         self.last_time_y = self.current_time 
-        self.last_error_y = error_y 
+        self.last_error_y = error_y
 
-        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) #+ (Kd_y * self.DTerm_y)
+        # Check contribution for each parameter - Tunning purposes
+        self.pid_y_values.p = PTerm_y
+        self.pid_y_values.i = Ki_y * self.ITerm_y
+        self.pid_y_values.d = Kd_y * self.DTerm_y
+        self.pid_y_values.error = error_y*0.001
+
+        self.u_y = PTerm_y + (Ki_y * self.ITerm_y) + (Kd_y * self.DTerm_y)
+
+        if (self.u_y < -self.windup_vel):
+             self.u_y = -self.windup_vel
+        elif (self.u_y > self.windup_vel):
+             self.u_y = self.windup_vel
 
   
     ## local position callback
@@ -351,7 +386,7 @@ class Controller:
         
 
         # Switch to velocity setpoints (Laser coordinates)       
-        if self.alignment_flag: #and self.coordinates.blob:
+        if self.alignment_flag and self.coordinates.blob:
 
             # Set the flag to use velocity setpoints and yaw angle
             self.sp.type_mask = int('010111000111', 2)
@@ -369,33 +404,33 @@ class Controller:
              
 
             # x and y controller based on distance from blob center to image center (0,0)                 
-            # if ez < 0.1:
+            if ez < 0.1:
                 
-            #     self.SetPoint_x  = 0
-            #     self.SetPoint_y  = 0
-            #     self.PID_x(self.coordinates.xp)
-            #     self.PID_y(self.coordinates.yp)
-            #     self.u_x= np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
-            #     self.u_y= np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
+                self.SetPoint_x  = 0
+                self.SetPoint_y  = 0
+                self.PID_x(self.coordinates.xp)
+                self.PID_y(self.coordinates.yp)
+                #self.u_x= np.sign(self.SetPoint_x - self.coordinates.xp)*self.u_x
+                #self.u_y= np.sign(self.SetPoint_y - self.coordinates.yp)*self.u_y
                 
-            #     ex = abs(self.SetPoint_x - self.coordinates.xp)
-            #     ey = abs(self.SetPoint_x - self.coordinates.yp)
+                ex = abs(self.SetPoint_x - self.coordinates.xp)
+                ey = abs(self.SetPoint_x - self.coordinates.yp)
                 
                 
-            #     if ex < self.pxl_err:
-            #         self.sp.velocity.x = 0
-            #     elif ex > self.pxl_err:
-            #         self.sp.velocity.x = self.u_x
+                # if ex < self.pxl_err:
+                #     self.sp.velocity.x = 0
+                # elif ex > self.pxl_err:
+                self.sp.velocity.x = self.u_x
 
-            #     if ey < self.pxl_err:
-            #         self.sp.velocity.y = 0    
-            #     elif ey > self.pxl_err:
-            #         self.sp.velocity.y = self.u_y
+                # if ey < self.pxl_err:
+                #     self.sp.velocity.y = 0    
+                # elif ey > self.pxl_err:
+                self.sp.velocity.y = self.u_y
             
 
             #print "ex : ",self.SetPoint_x - self.coordinates.xp, " u_x : ",self.u_x
             #print "ey : ",self.SetPoint_y - self.coordinates.yp, " u_y : ",self.u_y
-            print "ez : ",self.ALT_SP - self.local_pos.z#," u_z : ",self.u_z
+            #print "ez : ",self.ALT_SP - self.local_pos.z#," u_z : ",self.u_z
         
             # #landing
             # # if z < 0 or z == 0:
@@ -466,7 +501,9 @@ def main():
 
     pid_pub = rospy.Publisher("/laser_alignment/velocity_pid", PID_velocities, queue_size = 1)
     
-    pid_val_pub = rospy.Publisher("/laser_alignment/pid_values", pid, queue_size = 1)
+    pid_z_val_pub = rospy.Publisher("/laser_alignment/pid_values/z", pid, queue_size = 1)
+    pid_x_val_pub = rospy.Publisher("/laser_alignment/pid_values/x", pid, queue_size = 1)
+    pid_y_val_pub = rospy.Publisher("/laser_alignment/pid_values/y", pid, queue_size = 1)
 
     # We need to send few setpoint messages, then activate OFFBOARD mode, to take effect
     k = 0
@@ -482,7 +519,9 @@ def main():
     # ROS main loop
     while not rospy.is_shutdown():
         cnt.updateSp()
-        pid_val_pub.publish(cnt.pid_values)
+        pid_z_val_pub.publish(cnt.pid_z_values)
+        pid_x_val_pub.publish(cnt.pid_x_values)
+        pid_y_val_pub.publish(cnt.pid_y_values)
         pid_pub.publish(cnt.pid)
         sp_pub.publish(cnt.sp)
         

@@ -45,8 +45,8 @@ class alignment:
         ocam_mod['e'] = float(-0.1257)
         
         # Experimental center
-        ocam_mod['cx'] = float(233) #float(233) Cam Center 
-        ocam_mod['cy'] = float(305) #float(305) Cam Center / float(283) PD Center
+        ocam_mod['cx'] = float(257) #float(233) Cam Center 
+        ocam_mod['cy'] = float(290) #float(305) Cam Center / float(283) PD Center
 
         self.ocam_model = ocam_mod
 
@@ -183,7 +183,7 @@ class alignment:
             self.coordinates.yp = vector2D[1]
             self.coordinates.blob = 1
 
-            print("Blob detected at:[", self.coordinates.xp, self.coordinates.yp,"]")
+            #print("Blob detected at:[", self.coordinates.xp, self.coordinates.yp,"]")
             
         # More than one blob detected in the image
         elif keypoints_num > 1:
@@ -214,7 +214,7 @@ class alignment:
             self.coordinates.yp = vector2D[1]
             self.coordinates.blob = 1
 
-            print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
+            #print("Closest blob detected at:[", vector2D[0], vector2D[1],"]")
 
     
 

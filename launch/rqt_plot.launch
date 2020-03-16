@@ -1,21 +1,35 @@
 <launch>
 	<!-- Plot x drone and pixel positions -->
-    <!-- <node name="xpos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/x /laser_alignment/coordinates/xp" /> -->
+    <node name="xpos_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/x /laser_alignment/coordinates/xp
+              /mavros/local_position/velocity_local/twist/linear/x /laser_alignment/velocity_pid/ux" />
     
 
     <!-- Plot y drone and pixel positions -->
-    <!-- <node name="ypos_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/y /laser_alignment/coordinates/yp" /> -->
+    <node name="ypos_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/y /laser_alignment/coordinates/yp
+              /mavros/local_position/velocity_local/twist/linear/y /laser_alignment/velocity_pid/uy" />
     
 
     <!-- Plot z drone position -->
-    <node name="zpos_and_vel_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position/z /mavros/local_position/velocity_local/twist/linear/z /laser_alignment/velocity_pid/uz" />
+    <!-- <node name="zpos_and_vel_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position/z /mavros/local_position/velocity_local/twist/linear/z /laser_alignment/velocity_pid/uz" /> -->
 
     <!-- Plot z pid controller values -->
-    <node name="z_controller_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/laser_alignment/velocity_pid/uz /laser_alignment/pid_values" />
+    <!-- <node name="center_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/laser_alignment/coordinates/yp /laser_alignment/coordinates/xp /mavros/local_position/pose/pose/position/z" /> -->
+
+    <!-- Plot z pid controller values -->
+    <!-- <node name="z_controller_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/laser_alignment/velocity_pid/uz /laser_alignment/pid_values/z" /> -->
+
+    <!-- Plot x pid controller values -->
+    <node name="x_controller_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/laser_alignment/velocity_pid/ux /laser_alignment/pid_values/x" />
+
+    <!-- Plot y pid controller values -->
+    <node name="y_controller_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/laser_alignment/velocity_pid/uy /laser_alignment/pid_values/y" />
 
     <!-- <node name="zvel_plot" pkg="rqt_plot" type="rqt_plot"
         args="/mavros/local_position/velocity/twist/linear/z" /> -->
